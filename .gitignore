@@ -1,0 +1,7 @@
+key.txt
+sales.db
+pricing_data.csv
+*.jpeg
+*..jpg
+geocode_cache.json
+pricemodel.py
