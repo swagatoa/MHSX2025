@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quantiflow Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script src="https://unpkg.com/delaunator@5.0.0/delaunator.min.js"></script>
+
+  <style>
+    :root {
+      --main-bg: #141414;
+      --card-bg: #232323;
+      --border: #303030;
+      --text-main: #fafafa;
+      --text-secondary: #bcbcbc;
+      --accent-green: #34c759;
+      --accent-gold: #ffd700;
+      --accent-yellow: #FFFF00;
+      --accent-red: #ff4d4d;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background: var(--main-bg);
+      color: var(--text-main);
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+
+    .main {
+      padding: 36px 3vw;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .header {
+      font-size: 2rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--text-main);
+      margin-bottom: 10px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .tab-button {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .tab-button:hover {
+      background: #2a2a2a;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 28px;
+    }
+
+    .chart-box {
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 13px;
+      padding: 16px 16px 24px 16px;
+    }
+
+    .summary-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 22px;
+      margin-top: 30px;
+    }
+
+    .summary-box {
+      flex: 1;
+      background: var(--main-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 22px;
+      font-size: 1.08rem;
+    }
+
+    .summary-box strong {
+      display: block;
+      color: var(--text-secondary);
+      font-size: 0.97rem;
+      font-weight: 400;
+      margin-bottom: 6px;
+    }
+
+    .upload-area {
+      border: 2px dashed var(--border);
+      padding: 40px;
+      text-align: center;
+      border-radius: 12px;
+      color: var(--text-secondary);
+    }
+
+    .upload-area input {
+      margin-top: 16px;
+    }
+
+    #heatMapImage {
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* ─── NEW: Styles for Price Optimization tab ─── */
+    .priceopt-container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 13px;
+    }
+
+    .priceopt-inputs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .priceopt-inputs label {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      display: flex;
+      flex-direction: column;
+      font-weight: 400;
+    }
+
+    .priceopt-inputs input {
+      margin-top: 6px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #2a2a2a;
+      color: var(--text-main);
+      font-size: 1rem;
+      width: 200px;
+    }
+
+    .priceopt-inputs button {
+      margin-top: 22px;
+      padding: 10px 16px;
+      background: var(--accent-green);
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .priceopt-inputs button:hover {
+      background: #2fa14d;
+    }
+
+    #price3d {
+      width: 100%;
+      height: 600px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      background: #1e1e1e;
+      /* This dark background ensures no white behind the Plotly canvas */
+    }
+  </style>
+</head>
+
+<body>
+  <div class="main">
+    <div class="header">Quantiflow ★</div>
+
+    <!-- ─── Tab Buttons ─── -->
+    <div class="tabs">
+      <button class="tab-button" onclick="switchTab('dashboard')">Dashboard</button>
+      <button class="tab-button" onclick="switchTab('bills')">Bills</button>
+      <button class="tab-button" onclick="switchTab('heatmap')">Heat Map</button>
+      <button class="tab-button" onclick="switchTab('priceopt')">Price Optimization</button>
+    </div>
+
+    <!-- ========== Dashboard Tab ========== -->
+    <div class="tab-content active" id="dashboard">
+      <div class="charts-grid">
+        <div class="chart-box">
+          <h4>Distribution of Expenses</h4>
+          <canvas id="expPieChart"></canvas>
+        </div>
+        <div class="chart-box">
+          <h4>Last 8 Weeks Expenditure</h4>
+          <canvas id="expLineChart"></canvas>
+        </div>
+        <div class="chart-box">
+          <h4>Revenue Sources</h4>
+          <canvas id="revPieChart"></canvas>
+        </div>
+        <div class="chart-box">
+          <h4>Last 8 Weeks Revenue</h4>
+          <canvas id="revLineChart"></canvas>
+        </div>
+        <div class="chart-box">
+          <h4>Projected Sales – June 2025</h4>
+          <canvas id="projectedSalesChart"></canvas>
+        </div>
+        <div class="chart-box">
+          <h4>Units Sold</h4>
+          <canvas id="unitsLineChart"></canvas>
+        </div>
+      </div>
+
+      <div class="summary-row" style="margin-top: 40px;">
+        <div class="summary-box" id="may-expenditure-box">
+          <strong>May Expenditure</strong>
+          <span id="may-expenditure-value">$--</span>
+        </div>
+        <div class="summary-box" id="june-expenditure-box">
+          <strong>Projected June Expenditure</strong>
+          <span id="june-expenditure-value">--</span>
+        </div>
+        <div class="summary-box" id="may-revenue-box">
+          <strong>May Revenue</strong>
+          <span id="may-revenue-value">$--</span>
+        </div>
+        <div class="summary-box" id="june-revenue-box">
+          <strong>Projected June Revenue</strong>
+          <span id="june-revenue-value">--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== Bills Tab ========== -->
+    <div class="tab-content" id="bills">
+      <div class="upload-area">
+        <p>Upload monthly bills (PDF, CSV, etc.)</p>
+        <input type="file" multiple />
+      </div>
+    </div>
+
+    <!-- ========== Heat Map Tab ========== -->
+    <div class="tab-content" id="heatmap">
+      <div class="chart-box" style="max-width: 800px; text-align: center;">
+        <h4>Heat Map</h4>
+        <img id="heatMapImage" alt="Loading heatmap…" />
+      </div>
+    </div>
+
+    <!-- ========== Price Optimization Tab (3D) ========== -->
+    <div class="tab-content" id="priceopt">
+      <div class="priceopt-container">
+        <h4 style="color: var(--text-main); margin-bottom: 8px;">Price Optimization Model</h4>
+        <div class="priceopt-inputs">
+          <label>
+            Product Description
+            <input type="text" id="productDescInput" placeholder="Describe your product…" />
+          </label>
+          <button id="findPriceBtn">Find Competing Price</button>
+          <label>
+            Competitor’s Price
+            <input type="number" id="competitorPriceInput" placeholder="e.g. 49.99" />
+          </label>
+          <button id="generatePriceModelBtn">Generate 3D Surface</button>
+        </div>
+        <div id="price3d"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ─── TAB SWITCHER ───
+    function switchTab(id) {
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.getElementById(id).classList.add('active');
+    }
+
+    // ─── CHART.JS INSTANCES ───
+    const expPieCtx   = document.getElementById("expPieChart").getContext("2d");
+    const expLineCtx  = document.getElementById("expLineChart").getContext("2d");
+    const revPieCtx   = document.getElementById("revPieChart").getContext("2d");
+    const revLineCtx  = document.getElementById("revLineChart").getContext("2d");
+    const projCtx     = document.getElementById("projectedSalesChart").getContext("2d");
+    const unitsCtx    = document.getElementById("unitsLineChart").getContext("2d");
+    const heatMapImg  = document.getElementById("heatMapImage");
+
+    // ───── Expense Distribution Pie (legend hidden) ─────
+    const expPieChart = new Chart(expPieCtx, {
+      type: 'pie',
+      data: {
+        labels: [],
+        datasets: [{
+          data: [],
+          backgroundColor: ['#ff4d4d', '#e03b3b', '#cc2e2e', '#b32424', '#991a1a']
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { display: false }  // ← legend turned off
+        }
+      }
+    });
+
+    // ───── Last 8 Weeks Expenditure ─────
+    const expLineChart = new Chart(expLineCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Expenditure (Actual)',
+            data: [],
+            borderColor: '#ff4d4d',
+            backgroundColor: 'rgba(255, 77, 77, 0.2)',
+            fill: true,
+            tension: 0.3
+          },
+          {
+            label: 'Expenditure (Forecast)',
+            data: [],
+            borderColor: '#ff4d4d',
+            backgroundColor: 'transparent',
+            borderDash: [5, 5],
+            tension: 0.3
+          }
+        ]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#fff' } } },
+        scales: {
+          x: { ticks: { color: '#fff' } },
+          y: { ticks: { color: '#fff' } }
+        }
+      }
+    });
+
+    // ───── Revenue Distribution Pie (legend hidden) ─────
+    const revPieChart = new Chart(revPieCtx, {
+      type: 'pie',
+      data: {
+        labels: [],
+        datasets: [{
+          data: [],
+          backgroundColor: ['#34c759', '#2fa14d', '#248b40', '#1d7633']
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { display: false }  // ← legend turned off
+        }
+      }
+    });
+
+    // ───── Last 8 Weeks Revenue ─────
+    const revLineChart = new Chart(revLineCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Revenue (Actual)',
+            data: [],
+            borderColor: '#34c759',
+            backgroundColor: 'rgba(52, 199, 89, 0.2)',
+            fill: true,
+            tension: 0.3
+          },
+          {
+            label: 'Revenue (Forecast)',
+            data: [],
+            borderColor: '#34c759',
+            backgroundColor: 'transparent',
+            borderDash: [5, 5],
+            tension: 0.3
+          }
+        ]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#fff' } } },
+        scales: {
+          x: { ticks: { color: '#fff' } },
+          y: { ticks: { color: '#fff' } }
+        }
+      }
+    });
+
+    // ───── Projected Sales (bar) ─────
+    const projectedSalesChart = new Chart(projCtx, {
+      type: 'bar',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Projected Sales ($)',
+          data: [],
+          backgroundColor: '#34c759'
+        }]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#fff' } } },
+        scales: {
+          x: { ticks: { color: '#fff' } },
+          y: { ticks: { color: '#fff' } }
+        }
+      }
+    });
+
+    // ───── Units Sold (line + forecast) ─────
+    const unitsLineChart = new Chart(unitsCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Units Sold',
+            data: [],
+            borderColor: '#34c759',
+            backgroundColor: 'rgba(52, 199, 89, 0.2)',
+            fill: true,
+            tension: 0.3
+          },
+          {
+            label: 'Forecasted Units Sold',
+            data: [],
+            borderColor: '#34c759',
+            backgroundColor: 'transparent',
+            borderDash: [5, 5],
+            tension: 0.3
+          }
+        ]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#fff' } } },
+        scales: {
+          x: { ticks: { color: '#fff' } },
+          y: { ticks: { color: '#fff' } }
+        }
+      }
+    });
+
+    // ---- 2) Fetch & update all charts every second ----
+    async function updateAllCharts() {
+      try {
+        // 2a) Expenses Distribution
+        const expDistResp = await fetch('/api/expenses/distribution');
+        if (expDistResp.ok) {
+          const expDist = await expDistResp.json();
+          expPieChart.data.labels = expDist.labels;
+          expPieChart.data.datasets[0].data = expDist.data;
+          expPieChart.update();
+        }
+
+        // 2b) Expenses Weekly → Actual vs Forecast
+        const expWeeklyResp = await fetch('/api/expenses/weekly');
+        if (expWeeklyResp.ok) {
+          const expWeekly = await expWeeklyResp.json();
+          const datesExp = expWeekly.weeks;       
+          const valuesExp = expWeekly.data.map(value => Math.abs(value));   
+          const totalExpPoints    = datesExp.length;
+          const forecastCountExp  = 4;
+          const actualCountExp    = totalExpPoints - forecastCountExp;
+
+          const actualExpData = valuesExp
+            .slice(0, actualCountExp)
+            .concat(Array(forecastCountExp).fill(null));
+
+          const forecastExpData = Array(actualCountExp - 1).fill(null)
+            .concat(
+              valuesExp[actualCountExp - 1],
+              ...valuesExp.slice(actualCountExp)
+            );
+
+          expLineChart.data.labels = datesExp;
+          expLineChart.data.datasets[0].data = actualExpData;
+          expLineChart.data.datasets[1].data = forecastExpData;
+          expLineChart.update();
+        }
+
+        // 2c) Revenue Distribution
+        const revDistResp = await fetch('/api/revenue/distribution');
+        if (revDistResp.ok) {
+          const revDist = await revDistResp.json();
+          revPieChart.data.labels      = revDist.labels;
+          revPieChart.data.datasets[0].data = revDist.data;
+          revPieChart.update();
+        }
+
+        // 2d) Revenue Weekly → Actual vs Forecast
+        const revWeeklyResp = await fetch('/api/revenue/weekly');
+        if (revWeeklyResp.ok) {
+          const revWeekly = await revWeeklyResp.json();
+          const datesRev   = revWeekly.weeks;     
+          const valuesRev  = revWeekly.data;     
+          const totalRevPoints    = datesRev.length;
+          const forecastCountRev  = 4;
+          const actualCountRev    = totalRevPoints - forecastCountRev;
+
+          const actualRevData = valuesRev
+            .slice(0, actualCountRev)
+            .concat(Array(forecastCountRev).fill(null));
+
+          const forecastRevData = Array(actualCountRev - 1).fill(null)
+            .concat(
+              valuesRev[actualCountRev - 1],
+              ...valuesRev.slice(actualCountRev)
+            );
+
+          revLineChart.data.labels = datesRev;
+          revLineChart.data.datasets[0].data = actualRevData;
+          revLineChart.data.datasets[1].data = forecastRevData;
+          revLineChart.update();
+        }
+
+        // 2e) Projected Sales (bar)
+        const projResp = await fetch('/api/projected-sales');
+        if (projResp.ok) {
+          const projData = await projResp.json();
+          projectedSalesChart.data.labels       = projData.labels;
+          projectedSalesChart.data.datasets[0].data = projData.data;
+          projectedSalesChart.update();
+        }
+
+        // 2f) Demand → Units Sold (line + forecast)
+        const demandResp = await fetch('/api/demand');
+        if (demandResp.ok) {
+          const demand = await demandResp.json();
+          const dates = demand.dates;       
+          const values = demand.values;     
+          const totalPoints    = dates.length;
+          const forecastCount  = 4;
+          const actualCount    = totalPoints - forecastCount;
+
+          const actualData = values
+            .slice(0, actualCount)
+            .concat(Array(forecastCount).fill(null));
+
+          const forecastData = Array(actualCount - 1).fill(null)
+            .concat(
+              values[actualCount - 1],
+              ...values.slice(actualCount)
+            );
+
+          unitsLineChart.data.labels = dates;
+          unitsLineChart.data.datasets[0].data = actualData;
+          unitsLineChart.data.datasets[1].data = forecastData;
+          unitsLineChart.update();
+        }
+
+        // 2g) Heat Map as Image
+        const heatImgResp = await fetch('/api/heatmap-image');
+        if (heatImgResp.ok) {
+          const blob = await heatImgResp.blob();
+          heatMapImg.src = URL.createObjectURL(blob);
+        }
+
+        // 2h) Summary Boxes
+        const summaryResp = await fetch('/api/summary');
+        if (summaryResp.ok) {
+          const summary = await summaryResp.json();
+          document.getElementById('may-expenditure-value').textContent =
+            '$' + summary.may_expenditure.toLocaleString();
+          const juneExpMin = summary.june_expenditure_projection[0].toLocaleString();
+          const juneExpMax = summary.june_expenditure_projection[1].toLocaleString();
+          document.getElementById('june-expenditure-value').textContent =
+            '$' + juneExpMin + ' - $' + juneExpMax;
+          document.getElementById('may-revenue-value').textContent =
+            '$' + summary.may_revenue.toLocaleString();
+          const juneRevMin = summary.june_revenue_projection[0].toLocaleString();
+          const juneRevMax = summary.june_revenue_projection[1].toLocaleString();
+          document.getElementById('june-revenue-value').textContent =
+            '$' + juneRevMin + ' - $' + juneRevMax;
+        }
+
+      } catch (err) {
+        console.error('Failed to fetch or update:', err);
+      }
+    }
+
+    // Kick off chart updates
+    updateAllCharts();
+    setInterval(updateAllCharts, 1000);
+
+    // ─── FIND COMPETITOR PRICE (helper) ───
+    document.getElementById('findPriceBtn').addEventListener('click', async () => {
+      const desc = document.getElementById('productDescInput').value.trim();
+      if (!desc) {
+        alert('Please enter a product description.');
+        return;
+      }
+      try {
+        const resp = await fetch('/api/findprice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productdescription: desc })
+        });
+        if (!resp.ok) throw new Error(`Server returned ${resp.status}`);
+        const json = await resp.json();
+        if (json.price == null) throw new Error('Invalid response from /api/findprice');
+        document.getElementById('competitorPriceInput').value = json.price;
+        // Auto‐generate 3D surface after fetching price
+        document.getElementById('generatePriceModelBtn').click();
+      } catch (err) {
+        console.error('Error finding competing price:', err);
+        alert('Failed to fetch competitor price. Check console for details.');
+      }
+    });
+
+    // ─── GENERATE PRICE MODEL (3D) ───
+    document.getElementById('generatePriceModelBtn').addEventListener('click', async () => {
+      const competitorPrice = parseFloat(document.getElementById('competitorPriceInput').value);
+      if (isNaN(competitorPrice)) {
+        alert('Please enter a numeric Competitor’s Price (e.g., 49.99).');
+        return;
+      }
+      const btn = document.getElementById('generatePriceModelBtn');
+      btn.disabled = true;
+      btn.textContent = 'Generating…';
+
+      try {
+        // 3a) Build a grid of (x, y) points
+        const WEEK_COUNT   = 52;
+        const PRICE_POINTS = 200;
+        const x = [], y = [];
+        const maxPrice  = competitorPrice * 2;
+        const priceStep = maxPrice / (PRICE_POINTS - 1);
+
+        for (let i = 0; i < PRICE_POINTS; i++) {
+          for (let week = 1; week <= WEEK_COUNT; week++) {
+            x.push(i * priceStep);
+            y.push(week);
+          }
+        }
+
+        // 3b) POST to /api/pricemodel
+        const payload = { x: x, y: y, competitors: competitorPrice.toString() };
+        const resp = await fetch('/api/pricemodel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!resp.ok) throw new Error(`Server returned ${resp.status}`);
+        const json = await resp.json();
+        const z = json.z;
+        if (!Array.isArray(z) || z.length !== x.length) {
+          throw new Error('Invalid z-array length from server');
+        }
+
+        // 3c) Find weekly maxima & global maximum
+        const WEEKLY_MAX_INDICES = new Array(WEEK_COUNT).fill(-1);
+        const WEEKLY_MAX_VALUES  = new Array(WEEK_COUNT).fill(-Infinity);
+        for (let idx = 0; idx < z.length; idx++) {
+          const weekIdx = y[idx] - 1;
+          if (z[idx] > WEEKLY_MAX_VALUES[weekIdx]) {
+            WEEKLY_MAX_VALUES[weekIdx]  = z[idx];
+            WEEKLY_MAX_INDICES[weekIdx] = idx;
+          }
+        }
+        let globalMaxValue = WEEKLY_MAX_VALUES[0];
+        let globalMaxIdx   = WEEKLY_MAX_INDICES[0];
+        for (let w = 1; w < WEEK_COUNT; w++) {
+          if (WEEKLY_MAX_VALUES[w] > globalMaxValue) {
+            globalMaxValue = WEEKLY_MAX_VALUES[w];
+            globalMaxIdx   = WEEKLY_MAX_INDICES[w];
+          }
+        }
+        const xWeekly = [], yWeekly = [], zWeekly = [];
+        for (let w = 0; w < WEEK_COUNT; w++) {
+          const idx = WEEKLY_MAX_INDICES[w];
+          xWeekly.push(x[idx]);
+          yWeekly.push(y[idx]);
+          zWeekly.push(z[idx]);
+        }
+        const xGlobal = x[globalMaxIdx];
+        const yGlobal = y[globalMaxIdx];
+        const zGlobal = z[globalMaxIdx];
+
+        // 3d) Delaunay triangulation for mesh
+        const coords   = x.map((xx, idx) => [xx, y[idx]]);
+        const delaunay = Delaunator.from(coords);
+        const triangles = delaunay.triangles;
+        const iArr = [], jArr = [], kArr = [];
+        for (let t = 0; t < triangles.length; t += 3) {
+          iArr.push(triangles[t]);
+          jArr.push(triangles[t + 1]);
+          kArr.push(triangles[t + 2]);
+        }
+
+        // 3e) Plotly 3D plot: mesh + weekly maxima + global maximum
+        const data = [
+          {
+            type: 'mesh3d',
+            x: x,
+            y: y,
+            z: z,
+            i: iArr,
+            j: jArr,
+            k: kArr,
+            opacity: 1.0,
+            color: 'rgb(52,199,89)',
+            flatshading: true,
+            name: 'Profit Surface'
+          },
+          {
+            type: 'scatter3d',
+            mode: 'markers',
+            x: xWeekly,
+            y: yWeekly,
+            z: zWeekly,
+            marker: {
+              size: 4,
+              color: 'var(--accent-gold)'
+            },
+            name: 'Weekly Maxima'
+          },
+          {
+            type: 'scatter3d',
+            mode: 'markers',
+            x: [xGlobal],
+            y: [yGlobal],
+            z: [zGlobal],
+            marker: {
+              size: 6,
+              color: 'var(--accent-yellow)'
+            },
+            name: 'Global Maximum'
+          }
+        ];
+
+        // **Here is the key change**: set margin.t → 0, and pass `{ displayModeBar: false }` below
+        const layout = {
+          paper_bgcolor: 'var(--main-bg)',
+          plot_bgcolor: '#1e1e1e',
+          scene: {
+            xaxis: {
+              title: "User's Product Price",
+              color: '#fafafa',
+              gridcolor: '#303030'
+            },
+            yaxis: {
+              title: "Week of Year",
+              color: '#fafafa',
+              gridcolor: '#303030'
+            },
+            zaxis: {
+              title: "Predicted Profit",
+              color: '#fafafa',
+              gridcolor: '#303030'
+            },
+            bgcolor: '#1e1e1e'
+          },
+          annotations: [
+            {
+              x: xGlobal,
+              y: yGlobal,
+              z: zGlobal,
+              text: `(${xGlobal.toFixed(2)}, ${yGlobal}, ${zGlobal.toFixed(2)})`,
+              showarrow: true,
+              arrowcolor: 'var(--accent-yellow)',
+              font: {
+                color: 'var(--accent-yellow)',
+                size: 12
+              },
+              ax: 0,
+              ay: -30,
+              az: -30
+            }
+          ],
+          margin: { l: 0, r: 0, b: 0, t: 0 },
+          showlegend: false      // ← hides the white legend panel
+        };
+
+        // Hide the modebar and draw:
+        Plotly.newPlot('price3d', data, layout, {
+          displayModeBar: false,
+          responsive: true
+        });
+
+      } catch (error) {
+        console.error('Error generating 3D surface:', error);
+        alert('Failed to generate 3D surface. Check console for details.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Generate 3D Surface';
+      }
+    });
+  </script>
+</body>
+</html>
