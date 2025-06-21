@@ -1,0 +1,13 @@
+
+download tesseract from https://github.com/UB-Mannheim/tesseract/wiki
+Add this directory (C:\Program Files\Tesseract-OCR\) to your system PATH
+
+sqlite3 already available
+pip install inference aisearch openai google-genai
+pip install fastapi extrapolation
+pip install geopy folium selenium pytesseract prophet yagooglesearch distro flask xyzservices websocket-client plotly
+
+
+
+
+
