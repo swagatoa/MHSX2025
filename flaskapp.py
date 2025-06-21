@@ -25,6 +25,7 @@ conn = sqlite3.connect("sales.db", check_same_thread=False)
 cursor = conn.cursor()
 
 def pie_chart():
+    cursor = conn.cursor()
     cursor.execute("""
         SELECT item_name, SUM(amount_spent) as total_revenue
         FROM sales
@@ -36,6 +37,7 @@ def pie_chart():
     return {"labels": item_names, "data": revenues}
 
 def revenue_by_week_line_graph():
+    cursor = conn.cursor()
     # Query total revenue grouped by year and week number
     cursor.execute("""
         SELECT 
@@ -52,6 +54,7 @@ def revenue_by_week_line_graph():
 
 def demand_by_week():
     # Query count of items sold grouped by year and week number
+    cursor = conn.cursor()
     cursor.execute("""
         SELECT 
             strftime('%Y-%W', date) AS year_week,
@@ -73,7 +76,7 @@ def heatmap():
             geocode_cache = json.load(f)
     else:
         geocode_cache = {}
-
+    cursor = conn.cursor()
     # Aggregate revenue by location
     cursor.execute("""
         SELECT location, SUM(amount_spent) as total_revenue
@@ -139,7 +142,7 @@ def heatmap():
 
 #heatmap()
 
-bills = ["bill1.jpeg", "bill2.jpeg", "receipt_683b6a2a11720.jpg", "receipt_683b6aa7e0053.jpg", "receipt_683b6b10699c4.jpg", "receipt_683b6960dc8c4.jpg"]
+bills = [ "bill1.jpeg","receipt_683b6a2a11720.jpg", "receipt_683b6aa7e0053.jpg"]
 expenses_distribution, expenses_weekly, expenditure = expensecategorization.produce_graphs(bills)
 
 app = Flask(__name__)
@@ -246,4 +249,4 @@ def findprice():
 
 if __name__ == '__main__':
     app.static_folder = 'templates'
-    app.run(debug=False, port=8080)
+    app.run(debug=True, port=8080)

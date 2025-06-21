@@ -12,4 +12,4 @@ def recognizecharacters(image):
     return text
 
 if __name__ == "__main__":
-    print(recognizecharacters("22862.jpeg"))
+    print(recognizecharacters("bill1.jpeg"))

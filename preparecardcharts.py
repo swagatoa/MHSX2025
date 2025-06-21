@@ -11,9 +11,10 @@ import matplotlib.pyplot as plt
 
 # Connect to the existing database
 conn = sqlite3.connect("sales.db")
-cursor = conn.cursor()
+
 
 def pie_chart():
+    cursor = conn.cursor()
     cursor.execute("""
         SELECT item_name, SUM(amount_spent) as total_revenue
         FROM sales
@@ -26,6 +27,7 @@ def pie_chart():
     return {"labels":item_names,"data":revenues}
 
 def revenue_by_week_line_graph():
+    cursor = conn.cursor()
     # Query total revenue grouped by year and week number
     cursor.execute("""
         SELECT 
@@ -51,7 +53,7 @@ def heatmap():
             geocode_cache = json.load(f)
     else:
         geocode_cache = {}
-
+    cursor = conn.cursor()
     # Aggregate revenue by location
     cursor.execute("""
         SELECT location, SUM(amount_spent) as total_revenue

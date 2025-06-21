@@ -4,8 +4,10 @@ import re
 import matplotlib.pyplot as plt
 from datetime import datetime
 from collections import defaultdict
+import os
 
 def scan_in_bill(filename):
+    print(f"reading file {filename} wd={os.getcwd()}")
     match = None
     while match == None:
         text = ocr.recognizecharacters(filename)

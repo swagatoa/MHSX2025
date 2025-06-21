@@ -3,10 +3,14 @@ from time import time
 import os
 import base64
 
-with open("key.txt", "r") as txt:
-    client = OpenAI(api_key=txt.read())
+with open("gemini_api_key.txt", "r") as txt:
+    client = OpenAI(api_key=txt.read(), base_url="https://generativelanguage.googleapis.com/v1beta/openai/")
 
-def askLlama(system, user, model="gpt-4o-mini"):
+
+
+
+
+def askLlama(system, user, model="gemini-2.5-flash"):
     start = time()
 
     response = client.chat.completions.create(
@@ -28,7 +32,7 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
-def askLlamaImg(system, image_path, model="gpt-4o-mini"):
+def askLlamaImg(system, image_path, model="gemini-2.5-flash"):
     start = time()
 
     base64_image = encode_image(image_path)
@@ -53,3 +57,10 @@ def askLlamaImg(system, image_path, model="gpt-4o-mini"):
     answer = response.choices[0].message.content
     print(f"Time taken: {time() - start:.2f} seconds")
     return answer
+
+if __name__ == "__main__":
+    answer = askLlama(
+        system="You are a helpful assistant.",
+        user="What's the capital of India?"
+    )
+    print(answer)

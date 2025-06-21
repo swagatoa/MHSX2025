@@ -170,7 +170,7 @@ def random_date():
 
 # Insert a single record
 def add_card(item_name, amount_spent, location, date):
-    global cursor
+    cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO sales (item_name, amount_spent, location, date)
         VALUES (?, ?, ?, ?)

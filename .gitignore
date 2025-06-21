@@ -5,3 +5,4 @@ pricing_data.csv
 *..jpg
 geocode_cache.json
 pricemodel.py
+gemini_api_key.txt
